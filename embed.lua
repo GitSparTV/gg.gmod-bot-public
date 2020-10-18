@@ -72,14 +72,7 @@ function EmbedM:Thumbnail(url)
 end
 
 function EmbedM:Video(url)
-	self.embed.image = {
-		url = url
-	}
-end
-
-function EmbedM:Provider(name, url)
-	self.embed.provider = {
-		name = name,
+	self.embed.video = {
 		url = url
 	}
 end
