@@ -1,9 +1,10 @@
 local EmbedM = {}
 EmbedM.__index = EmbedM
 
+local stringsub = string.sub
 function EmbedM:Title(t)
 	if #t > 256 then
-		t = string.sub(t, 1, 256)
+		t = stringsub(t, 1, 256)
 	end
 
 	self.embed.title = t
@@ -11,7 +12,7 @@ end
 
 function EmbedM:Description(t)
 	if #t > 2048 then
-		t = string.sub(t, 1, 2048)
+		t = stringsub(t, 1, 2048)
 	end
 
 	self.embed.description = t
@@ -38,7 +39,7 @@ function EmbedM:Footer(text)
 	end
 
 	if #text > 2048 then
-		text = string.sub(text, 1, 2048)
+		text = stringsub(text, 1, 2048)
 	end
 
 	footer.text = text
@@ -107,11 +108,11 @@ function EmbedM:Field(title, text, inline)
 	end
 
 	if #title > 256 then
-		title = string.sub(title, 1, 256)
+		title = stringsub(title, 1, 256)
 	end
 
 	if #text > 1024 then
-		text = string.sub(text, 1, 1024)
+		text = stringsub(text, 1, 1024)
 	end
 
 	fields[#fields + 1] = {
@@ -125,6 +126,7 @@ function EmbedM:Export()
 	return self.embed
 end
 
+local setmetatable = setmetatable
 local function CreateEmbed()
 	return setmetatable({
 		embed = {}
