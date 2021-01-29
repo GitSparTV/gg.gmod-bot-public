@@ -215,7 +215,7 @@ local function ReadDump()
 	local found = false
 
 	for i = 0, #Modules - 1 do
-		if string.find(Modules[1], "hl2.exe", 1, true) then
+		if string.find(Modules[i][1], "hl2.exe", 1, true) then
 			found = true
 			break
 		end
