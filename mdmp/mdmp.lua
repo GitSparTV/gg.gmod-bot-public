@@ -7,7 +7,7 @@ local errorp = ffi.new("libcerror_error_t *[1]")
 
 local function mdmp_assert(result)
 	if result == -1 then
-		local error_internal = ffi.cast("libcerror_internal_error *", errorp[0])
+		local error_internal = ffi.cast("libcerror_internal_error_t *", errorp[0])
 
 		if error_internal.messages == nil or error_internal.sizes == nil then
 			error("Unable to get error from libmdmp")
@@ -23,9 +23,7 @@ local function mdmp_assert(result)
 
 		trace = table.concat(trace, "\n", 0)
 
-		if len == -1 then
-			error()
-		end
+		assert(#trace == 0)
 
 		mdmp.libmdmp_error_free(errorp)
 		error(trace, 3)
@@ -39,7 +37,7 @@ do
 	local stringupper = string.upper
 
 	function MemAddress(n)
-		return "0x" .. stringupper(bittohex(n, 8))
+		return "0x" .. string.gsub(stringupper(bittohex(n, 16)), "^00000000(........)$", "%1")
 	end
 end
 
@@ -81,9 +79,8 @@ end
 -- 	assert(ffi.C.fread(addr, 1, size, f) == size)
 -- 	return ffi.string(addr, size)
 -- end
-local testfile = io.open("test.txt", "wb")
-
 local function ReadModules(f)
+	if streams[4] == true then return end
 	local buf = streams[4][1]
 	local k = buf[0]
 	buf = buf + 1
@@ -118,20 +115,34 @@ local GetSystemInfo
 do
 	local ProcessorArchToName = {
 		[0] = "x86",
-		"MIPS", "Alpha", "PPC", "ShX", "ARM", "Intel Itanium", "Alpha x64", "MSIL", "x64", "Windows x64 on 32-bit UEFI (EFI-IA32)", "Neutral processor architecture.", "ARM x64", "Windows x64 on 32-bit ARM", "ARM x64 with emulating the x86";
+		"MIPS", "Alpha", "PPC", "ShX", "ARM", "Intel Itanium", "Alpha x64", "MSIL", "x64", "Windows x64 on 32-bit UEFI (EFI-IA32)", "Neutral processor architecture.", "ARM x64", "Windows x64 on 32-bit ARM", "ARM x64 with emulating x86";
 		[0xFFFF] = "Unknown processor",
 	}
 
+	local WindowsVerToName = {
+		["10.0"] = "Windows 10",
+		["6.3"] = "Windows 8.1",
+		["6.2"] = "Windows 8",
+		["6.1"] = "Windows 7",
+		["6.0"] = "Windows Vista",
+		["5.2"] = "Windows XP 64-Bit Edition",
+		["5.1"] = "Windows XP",
+		["5.0"] = "Windows 2000",
+	}
+
 	function GetSystemInfo()
+		if streams[7] == true then return end
 		local buf = streams[7][1]
 		local sysinfo = ffi.new("MINIDUMP_SYSTEM_INFO")
 		ffi.copy(sysinfo, buf, ffi.sizeof("MINIDUMP_SYSTEM_INFO"))
+		local ver = sysinfo.MajorVersion .. "." .. sysinfo.MinorVersion
 
-		return ProcessorArchToName[sysinfo.ProcessorArchitecture], sysinfo.MajorVersion .. "." .. sysinfo.MinorVersion, sysinfo.NumberOfProcessors
+		return ProcessorArchToName[sysinfo.ProcessorArchitecture], WindowsVerToName[ver] or ver, sysinfo.NumberOfProcessors
 	end
 end
 
 local function ReadMiscInfo()
+	if streams[15] == true then return end
 	local buf = streams[15][1]
 
 	if streams[15][2] == 1364 then
@@ -141,22 +152,40 @@ local function ReadMiscInfo()
 		return misc.ProcessUserTime, misc.ProcessorMaxMhz / 1000
 	end
 
-	return "Unimplemented MINIDUMP_MISC_INFO", 0
+	return false, 0
 end
 
 local function ReadComment()
+	if streams[10] == true then return end
 	local buf = streams[10][1]
 	buf = ffi.string(buf, streams[10][2])
-	print(buf)
 	local percent, total, free = string.match(buf, "%-System Memory%-\n%s*Usage: (%d+)%%\n%s*Total: ([%d.]+[KMG]B) Physical, [%d.]+[KMG]B Paged, [%d.]+[KMG]B Virtual\n%s*Free: ([%d.]+[KMG]B) Physical, [%d.]+[KMG]B Paged, [%d.]+[KMG]B Virtual")
-	local luatrace = string.match(buf, "%-Lua Stack Traces%-\n%s*(.-)\n\n")
+	local luatrace = string.match(buf, "%-Lua Stack Traces%-\n%s*(.-)\n\n%-Console Buffer%-")
 	local noerror = string.match(buf, "%-No Error Message%-")
 	local workingset = string.match(buf, "Working Set: ([%d.]+[KMG]B)")
+	local console, len = string.match(buf, "%-Console Buffer%-\n(.+)$"), 0
 
-	return percent, total, free, luatrace, noerror, workingset
+	if console then
+		local t, i = {}, 0
+
+		for line in string.gmatch(console, "([^\n]+)") do
+			len = len + 1
+
+			if i ~= 5 then
+				i = i + 1
+				t[i] = line
+			end
+		end
+
+		console = table.concat(t, "\n", 1, i)
+	end
+
+	return true, percent, total, free, luatrace, noerror, workingset, console, len
 end
 
 local function FindModuleFromExection(exception, modules)
+	if not exception or not modules then return end
+
 	for i = 0, #modules - 1 do
 		local module = modules[i]
 		local base = module[2]
@@ -169,6 +198,8 @@ local function FindModuleFromExection(exception, modules)
 
 	return false
 end
+
+local stringfind = string.find
 
 local function ReadDump()
 	local f = C.fopen("./mdmp/analyze.mdmp", "rb")
@@ -212,27 +243,39 @@ local function ReadDump()
 
 	local ExceptionCode, ExceptionCodename, ExceptionDescription, ExceptionAddress = ReadExceptionInfo()
 	local Modules = ReadModules(f)
-	local found = false
+	local Realm = "Unknown realm"
 
-	for i = 0, #Modules - 1 do
-		if string.find(Modules[i][1], "hl2.exe", 1, true) then
-			found = true
-			break
+	if Modules then
+		local stringfind = stringfind
+
+		for i = 0, #Modules - 1 do
+			local path = Modules[i][1]
+
+			if stringfind(path, "hl2.exe", 1, true) then
+				Realm = "🟧 Client x32"
+				break
+			elseif stringfind(path, "srcds.exe", 1, true) then
+				Realm = "🟦 Server x32"
+				break
+			elseif stringfind(path, "gmod.exe", 1, true) then
+				Realm = "🟧 Client x64"
+				break
+			elseif stringfind(path, "srcds_win64.exe", 1, true) then
+				Realm = "🟦 Server x64"
+				break
+			end
 		end
-	end
-
-	if not found then
-		error("Not a GMod dump")
 	end
 
 	local What, RelativeAddr = FindModuleFromExection(ExceptionAddress, Modules)
 	local Arch, OSVersion, NumOfCores = GetSystemInfo()
 	local ProcessUserTime, ProccesorMaxSpeed = ReadMiscInfo()
-	local RAMPercent, RAMTotal, RAMFree, LuaTrace, NoError, WorkingSet = ReadComment()
+	local HasComment, RAMPercent, RAMTotal, RAMFree, LuaTrace, NoError, WorkingSet, ConsoleLog, ConsoleLogLen = ReadComment()
 	mdmp_assert(mdmp.libmdmp_error_free(errorp))
 	mdmp_assert(mdmp.libmdmp_file_free(FILE, errorp))
+	collectgarbage()
 
-	return ExceptionCode and MemAddress(ExceptionCode), ExceptionCodename, ExceptionDescription, ExceptionAddress and MemAddress(ExceptionAddress), What, RelativeAddr and MemAddress(RelativeAddr), Arch, OSVersion, NumOfCores, ProcessUserTime, ProccesorMaxSpeed, RAMPercent, RAMTotal, RAMFree, LuaTrace, NoError, WorkingSet
+	return ExceptionCode and MemAddress(ExceptionCode), ExceptionCodename, ExceptionDescription, ExceptionAddress and MemAddress(ExceptionAddress), Realm, What, RelativeAddr and MemAddress(RelativeAddr), Arch, OSVersion, NumOfCores, ProcessUserTime, ProccesorMaxSpeed, HasComment, RAMPercent, RAMTotal, RAMFree, LuaTrace, NoError, WorkingSet, ConsoleLog, ConsoleLogLen
 end
 
 return ReadDump
