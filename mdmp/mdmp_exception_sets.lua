@@ -41,29 +41,29 @@
 -- }
 local ExceptionCodeToName = {
 	[0x00000103] = "STILL_ACTIVE",
-	[0xC0000005] = "EXCEPTION_ACCESS_VIOLATION",
-	[0x80000002] = "EXCEPTION_DATATYPE_MISALIGNMENT",
-	[0x80000003] = "EXCEPTION_BREAKPOINT",
-	[0x80000004] = "EXCEPTION_SINGLE_STEP",
-	[0xC000008C] = "EXCEPTION_ARRAY_BOUNDS_EXCEEDED",
-	[0xC000008D] = "EXCEPTION_FLT_DENORMAL_OPERAND",
-	[0xC000008E] = "EXCEPTION_FLT_DIVIDE_BY_ZERO",
-	[0xC000008F] = "EXCEPTION_FLT_INEXACT_RESULT",
-	[0xC0000090] = "EXCEPTION_FLT_INVALID_OPERATION",
-	[0xC0000091] = "EXCEPTION_FLT_OVERFLOW",
-	[0xC0000092] = "EXCEPTION_FLT_STACK_CHECK",
-	[0xC0000093] = "EXCEPTION_FLT_UNDERFLOW",
-	[0xC0000094] = "EXCEPTION_INT_DIVIDE_BY_ZERO",
-	[0xC0000095] = "EXCEPTION_INT_OVERFLOW",
-	[0xC0000096] = "EXCEPTION_PRIV_INSTRUCTION",
-	[0xC0000006] = "EXCEPTION_IN_PAGE_ERROR",
-	[0xC000001D] = "EXCEPTION_ILLEGAL_INSTRUCTION",
-	[0xC0000025] = "EXCEPTION_NONCONTINUABLE_EXCEPTION",
-	[0xC00000FD] = "EXCEPTION_STACK_OVERFLOW",
-	[0xC0000026] = "EXCEPTION_INVALID_DISPOSITION",
-	[0x80000001] = "EXCEPTION_GUARD_PAGE",
-	[0xC0000008] = "EXCEPTION_INVALID_HANDLE",
-	[0xC0000194] = "EXCEPTION_POSSIBLE_DEADLOCK",
+	[0xC0000005] = "ACCESS_VIOLATION",
+	[0x80000002] = "DATATYPE_MISALIGNMENT",
+	[0x80000003] = "BREAKPOINT",
+	[0x80000004] = "SINGLE_STEP",
+	[0xC000008C] = "ARRAY_BOUNDS_EXCEEDED",
+	[0xC000008D] = "FLT_DENORMAL_OPERAND",
+	[0xC000008E] = "FLT_DIVIDE_BY_ZERO",
+	[0xC000008F] = "FLT_INEXACT_RESULT",
+	[0xC0000090] = "FLT_INVALID_OPERATION",
+	[0xC0000091] = "FLT_OVERFLOW",
+	[0xC0000092] = "FLT_STACK_CHECK",
+	[0xC0000093] = "FLT_UNDERFLOW",
+	[0xC0000094] = "INT_DIVIDE_BY_ZERO",
+	[0xC0000095] = "INT_OVERFLOW",
+	[0xC0000096] = "PRIV_INSTRUCTION",
+	[0xC0000006] = "IN_PAGE_ERROR",
+	[0xC000001D] = "ILLEGAL_INSTRUCTION",
+	[0xC0000025] = "NONCONTINUABLE_EXCEPTION",
+	[0xC00000FD] = "STACK_OVERFLOW",
+	[0xC0000026] = "INVALID_DISPOSITION",
+	[0x80000001] = "GUARD_PAGE",
+	[0xC0000008] = "INVALID_HANDLE",
+	[0xC0000194] = "POSSIBLE_DEADLOCK",
 	[0xC000013A] = "CONTROL_C_EXIT",
 	[0x00000000] = "STATUS_WAIT_0",
 	[0x00000080] = "STATUS_ABANDONED_WAIT_0",
@@ -107,45 +107,45 @@ local ExceptionCodeToName = {
 }
 
 local ExceptionCodeDescription = {
-	["EXCEPTION_ACCESS_VIOLATION"] = [[
+	["ACCESS_VIOLATION"] = [[
 The thread tried to read from or write to a virtual address for which it does not have the appropriate access.]],
-	["EXCEPTION_ARRAY_BOUNDS_EXCEEDED"] = [[
+	["ARRAY_BOUNDS_EXCEEDED"] = [[
 The thread tried to access an array element that is out of bounds and the underlying hardware supports bounds checking.]],
-	["EXCEPTION_BREAKPOINT"] = [[
+	["BREAKPOINT"] = [[
 A breakpoint was encountered.]],
-	["EXCEPTION_DATATYPE_MISALIGNMENT"] = [[
+	["DATATYPE_MISALIGNMENT"] = [[
 The thread tried to read or write data that is misaligned on hardware that does not provide alignment. For example, 16-bit values must be aligned on 2-byte boundaries; 32-bit values on 4-byte boundaries, and so on.]],
-	["EXCEPTION_FLT_DENORMAL_OPERAND"] = [[
+	["FLT_DENORMAL_OPERAND"] = [[
 One of the operands in a floating-point operation is denormal. A denormal value is one that is too small to represent as a standard floating-point value.]],
-	["EXCEPTION_FLT_DIVIDE_BY_ZERO"] = [[
+	["FLT_DIVIDE_BY_ZERO"] = [[
 The thread tried to divide a floating-point value by a floating-point divisor of zero.]],
-	["EXCEPTION_FLT_INEXACT_RESULT"] = [[
+	["FLT_INEXACT_RESULT"] = [[
 The result of a floating-point operation cannot be represented exactly as a decimal fraction.]],
-	["EXCEPTION_FLT_INVALID_OPERATION"] = [[
+	["FLT_INVALID_OPERATION"] = [[
 This exception represents any floating-point exception not included in this list.]],
-	["EXCEPTION_FLT_OVERFLOW"] = [[
+	["FLT_OVERFLOW"] = [[
 The exponent of a floating-point operation is greater than the magnitude allowed by the corresponding type.]],
-	["EXCEPTION_FLT_STACK_CHECK"] = [[
+	["FLT_STACK_CHECK"] = [[
 The stack overflowed or underflowed as the result of a floating-point operation.]],
-	["EXCEPTION_FLT_UNDERFLOW"] = [[
+	["FLT_UNDERFLOW"] = [[
 The exponent of a floating-point operation is less than the magnitude allowed by the corresponding type.]],
-	["EXCEPTION_ILLEGAL_INSTRUCTION"] = [[
+	["ILLEGAL_INSTRUCTION"] = [[
 The thread tried to execute an invalid instruction.]],
-	["EXCEPTION_IN_PAGE_ERROR"] = [[
+	["IN_PAGE_ERROR"] = [[
 The thread tried to access a page that was not present, and the system was unable to load the page. For example, this exception might occur if a network connection is lost while running a program over the network.]],
-	["EXCEPTION_INT_DIVIDE_BY_ZERO"] = [[
+	["INT_DIVIDE_BY_ZERO"] = [[
 The thread tried to divide an integer value by an integer divisor of zero.]],
-	["EXCEPTION_INT_OVERFLOW"] = [[
+	["INT_OVERFLOW"] = [[
 The result of an integer operation caused a carry out of the most significant bit of the result.]],
-	["EXCEPTION_INVALID_DISPOSITION"] = [[
+	["INVALID_DISPOSITION"] = [[
 An exception handler returned an invalid disposition to the exception dispatcher. Programmers using a high-level language such as C should never encounter this exception.]],
-	["EXCEPTION_NONCONTINUABLE_EXCEPTION"] = [[
+	["NONCONTINUABLE_EXCEPTION"] = [[
 The thread tried to continue execution after a noncontinuable exception occurred.]],
-	["EXCEPTION_PRIV_INSTRUCTION"] = [[
+	["PRIV_INSTRUCTION"] = [[
 The thread tried to execute an instruction whose operation is not allowed in the current machine mode.]],
-	["EXCEPTION_SINGLE_STEP"] = [[
+	["SINGLE_STEP"] = [[
 A trace trap or other single-instruction mechanism signaled that one instruction has been executed.]],
-	["EXCEPTION_STACK_OVERFLOW"] = [[
+	["STACK_OVERFLOW"] = [[
 The thread used up its stack.]]
 }
 
