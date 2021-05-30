@@ -69,6 +69,7 @@ do
 			description = description .. "\n" .. "Access violation " .. (info[0] == 1 and "writing" or "reading") .. " location " .. MemAddress(info[1])
 		end
 
+		streams[6] = true
 		return MemAddress(code), codename, description, record.ExceptionAddress
 	end
 end
@@ -107,6 +108,7 @@ local function ReadModules(f)
 		ret_modules[i] = {ffi.string(charname, namelen), module.BaseOfImage, module.SizeOfImage}
 	end
 
+	streams[4] = true
 	return ret_modules
 end
 
@@ -137,6 +139,7 @@ do
 		ffi.copy(sysinfo, buf, ffi.sizeof("MINIDUMP_SYSTEM_INFO"))
 		local ver = sysinfo.MajorVersion .. "." .. sysinfo.MinorVersion
 
+		streams[7] = true
 		return ProcessorArchToName[sysinfo.ProcessorArchitecture], WindowsVerToName[ver] or ver, sysinfo.NumberOfProcessors
 	end
 end
@@ -149,9 +152,11 @@ local function ReadMiscInfo()
 		local misc = ffi.new("MINIDUMP_MISC_INFO_5")
 		ffi.copy(misc, buf, ffi.sizeof("MINIDUMP_MISC_INFO_5"))
 
+		streams[15] = true
 		return misc.ProcessUserTime, misc.ProcessorMaxMhz / 1000
 	end
 
+	streams[15] = true
 	return false, 0
 end
 
@@ -159,11 +164,11 @@ local function ReadComment()
 	if streams[10] == true then return end
 	local buf = streams[10][1]
 	buf = ffi.string(buf, streams[10][2])
-	local percent, total, free = string.match(buf, "%-System Memory%-\n%s*Usage: (%d+)%%\n%s*Total: ([%d.]+[KMG]B) Physical, [%d.]+[KMG]B Paged, [%d.]+[KMG]B Virtual\n%s*Free: ([%d.]+[KMG]B) Physical, [%d.]+[KMG]B Paged, [%d.]+[KMG]B Virtual")
+	local percent, total, free = string.match(buf, "%-System Memory%-\n%s*Usage: (%d+)%%\n%s*Total: ([%d.]+)[KMG]B Physical, [%d.]+[KMG]B Paged, [%d.]+[KMG]B Virtual\n%s*Free: ([%d.]+)[KMG]B Physical, [%d.]+[KMG]B Paged, [%d.]+[KMG]B Virtual")
 	local luatrace = string.match(buf, "%-Lua Stack Traces%-\n%s*(.-)\n\n%-Console Buffer%-")
 	local noerror = string.match(buf, "%-No Error Message%-")
 	local workingset = string.match(buf, "Working Set: ([%d.]+[KMG]B)")
-	local console, len = string.match(buf, "%-Console Buffer%-\n(.+)$"), 0
+	local console, len = string.match(buf, "%-Console Buffer%-\n=*\n?(.+)$"), 0
 
 	if console then
 		local t, i = {}, 0
@@ -180,6 +185,7 @@ local function ReadComment()
 		console = table.concat(t, "\n", 1, i)
 	end
 
+	streams[10] = true
 	return true, percent, total, free, luatrace, noerror, workingset, console, len
 end
 
@@ -201,6 +207,7 @@ end
 
 local stringfind = string.find
 
+local FILE = ffi.new("libmdmp_file_t *[1]")
 local function ReadDump()
 	local f = C.fopen("./mdmp/analyze.mdmp", "rb")
 
@@ -210,7 +217,6 @@ local function ReadDump()
 		return
 	end
 
-	local FILE = ffi.new("libmdmp_file_t *[1]")
 	mdmp_assert(mdmp.libmdmp_file_initialize(FILE, errorp))
 	mdmp_assert(mdmp.libmdmp_file_open(FILE[0], "./mdmp/analyze.mdmp", 1, errorp))
 	local res = ffi.new("int[1]")
@@ -271,8 +277,9 @@ local function ReadDump()
 	local Arch, OSVersion, NumOfCores = GetSystemInfo()
 	local ProcessUserTime, ProccesorMaxSpeed = ReadMiscInfo()
 	local HasComment, RAMPercent, RAMTotal, RAMFree, LuaTrace, NoError, WorkingSet, ConsoleLog, ConsoleLogLen = ReadComment()
-	mdmp_assert(mdmp.libmdmp_error_free(errorp))
 	mdmp_assert(mdmp.libmdmp_file_free(FILE, errorp))
+	mdmp_assert(mdmp.libmdmp_error_free(errorp))
+	collectgarbage()
 	collectgarbage()
 
 	return ExceptionCode and MemAddress(ExceptionCode), ExceptionCodename, ExceptionDescription, ExceptionAddress and MemAddress(ExceptionAddress), Realm, What, RelativeAddr and MemAddress(RelativeAddr), Arch, OSVersion, NumOfCores, ProcessUserTime, ProccesorMaxSpeed, HasComment, RAMPercent, RAMTotal, RAMFree, LuaTrace, NoError, WorkingSet, ConsoleLog, ConsoleLogLen
